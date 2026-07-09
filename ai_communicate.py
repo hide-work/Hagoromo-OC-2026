@@ -1,12 +1,16 @@
 import os
-import ai_tools
 from openai import OpenAI
+import ai_tools
 
 # AIを利用するための「窓口」を用意
 client = None
 
 # 会話の履歴を記憶するリスト
-msgs = []
+msgs = [
+    {"role": "system",
+    "content": "日付や時間を聞かれた場合、必ず'get_current_time'ツールを使って回答すること。"
+    }
+]
 
 def initialize():
     global client
@@ -28,14 +32,18 @@ def message(user_text):
     # 2. AIに履歴を渡して返答をもらう
     api_response = client.chat.completions.create(
         model = "llama3.2:3b",
-        messages = msgs
+        messages = msgs,
+        tools=ai_tools.tools,
+        tool_choice="required"
     )
 
     # 3. 応答データから「メッセージオブジェクト」を取り出す
     assistant_msg = api_response.choices[0].message
     
+    final_msg = ai_tools.handle_tool_call(client, "llama3.2:3b", msgs, assistant_msg)
+
     # 4. メッセージオブジェクトから「テキスト部分」だけを取り出して履歴に追加
-    reply_text = assistant_msg.content
+    reply_text = final_msg.content
     msgs.append({"role": "assistant", "content": reply_text})
 
     # 5. 画面にAIの返答を通知
